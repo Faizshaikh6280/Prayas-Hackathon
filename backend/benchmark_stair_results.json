@@ -1,0 +1,719 @@
+{
+  "timestamp": "2026-09-19 16:27:45 UTC",
+  "case_id": "INV-2026-BLACK-CIRCUIT",
+  "metrics": {
+    "total_queries": 15,
+    "recall_at_1": 0.9333,
+    "recall_at_3": 0.9333,
+    "mrr": 0.9333,
+    "invalid_node_rate": 0.0,
+    "tool_selection_accuracy": 0.8667,
+    "unsupported_claim_rate": 0.0241,
+    "abstention_accuracy": 1.0,
+    "avg_routing_latency_ms": 9442.43,
+    "avg_retrieval_latency_ms": 745.56,
+    "avg_generation_latency_ms": 18524.81,
+    "avg_total_e2e_ms": 28713.6
+  },
+  "judge_pass_rate": 0.6667,
+  "judge_verdicts": [
+    {
+      "query_id": "Q-FIN-01",
+      "overall_pass": false,
+      "factual_correctness": false,
+      "evidence_support": false,
+      "source_faithfulness": true,
+      "judge_summary": "The response contains multiple critical errors, including incorrect transaction count and details, and unsupported claims about the month and year of transactions."
+    },
+    {
+      "query_id": "Q-FIN-02",
+      "overall_pass": true,
+      "factual_correctness": true,
+      "evidence_support": true,
+      "source_faithfulness": true,
+      "judge_summary": "The generated response accurately identifies the relevant transactions involving BANK1001 and supports the claims with explicit evidence citations, without making unsupported causal inferences."
+    },
+    {
+      "query_id": "Q-TEL-01",
+      "overall_pass": true,
+      "factual_correctness": true,
+      "evidence_support": true,
+      "source_faithfulness": true,
+      "judge_summary": "The generated response accurately reflects the provided evidence and meets all the evaluation criteria."
+    },
+    {
+      "query_id": "Q-TEL-02",
+      "overall_pass": false,
+      "factual_correctness": false,
+      "evidence_support": false,
+      "source_faithfulness": false,
+      "judge_summary": "The generated answer is incorrect and unsupported by the evidence. It introduces unsupported claims and critical errors."
+    },
+    {
+      "query_id": "Q-GEO-01",
+      "overall_pass": false,
+      "factual_correctness": false,
+      "evidence_support": false,
+      "source_faithfulness": true,
+      "judge_summary": "The forensic answer contains multiple factual and temporal errors, unsupported claims, and misinterpretations of the evidence."
+    },
+    {
+      "query_id": "Q-TEM-01",
+      "overall_pass": false,
+      "factual_correctness": true,
+      "evidence_support": false,
+      "source_faithfulness": true,
+      "judge_summary": "Heuristic fallback assessment (verified evidence citations present)."
+    },
+    {
+      "query_id": "Q-TEM-03",
+      "overall_pass": true,
+      "factual_correctness": true,
+      "evidence_support": true,
+      "source_faithfulness": true,
+      "judge_summary": "The response accurately identifies the phone call that precedes the bank transfer, supported by the provided evidence."
+    },
+    {
+      "query_id": "Q-ANM-01",
+      "overall_pass": true,
+      "factual_correctness": true,
+      "evidence_support": true,
+      "source_faithfulness": true,
+      "judge_summary": "The generated response accurately reflects the critical anomaly findings based on the provided evidence, meeting all evaluation criteria."
+    },
+    {
+      "query_id": "Q-ANM-04",
+      "overall_pass": true,
+      "factual_correctness": true,
+      "evidence_support": true,
+      "source_faithfulness": true,
+      "judge_summary": "The response accurately reflects the evidence provided and meets all the evaluation criteria."
+    },
+    {
+      "query_id": "Q-GRP-01",
+      "overall_pass": false,
+      "factual_correctness": false,
+      "evidence_support": false,
+      "source_faithfulness": true,
+      "judge_summary": "The response is factually incorrect and lacks evidence support, failing to accurately reflect the provided evidence."
+    },
+    {
+      "query_id": "Q-REP-01",
+      "overall_pass": true,
+      "factual_correctness": true,
+      "evidence_support": true,
+      "source_faithfulness": true,
+      "judge_summary": "The response accurately reflects the provided evidence and context without introducing unsupported claims or critical errors."
+    },
+    {
+      "query_id": "Q-REP-02",
+      "overall_pass": true,
+      "factual_correctness": true,
+      "evidence_support": true,
+      "source_faithfulness": true,
+      "judge_summary": "The response accurately cites the required Section 65B certificate and provides all necessary details without introducing unsupported claims or errors."
+    },
+    {
+      "query_id": "Q-MUL-01",
+      "overall_pass": true,
+      "factual_correctness": true,
+      "evidence_support": true,
+      "source_faithfulness": true,
+      "judge_summary": "The response accurately reflects the available evidence and does not make unsupported claims or unproven causations."
+    },
+    {
+      "query_id": "Q-HRD-01",
+      "overall_pass": true,
+      "factual_correctness": true,
+      "evidence_support": true,
+      "source_faithfulness": true,
+      "judge_summary": "The response accurately reflects the absence of evidence and aligns with the ground truth."
+    },
+    {
+      "query_id": "Q-HRD-04",
+      "overall_pass": true,
+      "factual_correctness": true,
+      "evidence_support": true,
+      "source_faithfulness": true,
+      "judge_summary": "The response accurately reflects the available evidence and does not make unsupported claims."
+    }
+  ],
+  "query_results": [
+    {
+      "query_id": "Q-FIN-01",
+      "query": "What transactions did Arjun Malhotra make in August?",
+      "category": "Financial",
+      "expected_leaves": [
+        "financial.transactions"
+      ],
+      "selected_leaves": [
+        "financial.transactions"
+      ],
+      "rejected_leaves": [],
+      "hit_at_1": true,
+      "hit_at_3": true,
+      "reciprocal_rank": 1.0,
+      "all_leaves_recalled": true,
+      "has_invalid_node": false,
+      "claims_count": 10,
+      "unsupported_claims_count": 0,
+      "abstention_expected": false,
+      "abstention_triggered": false,
+      "latency_breakdown_ms": {
+        "routing_ms": 13876.8,
+        "retrieval_ms": 208.76,
+        "normalization_ms": 0.63,
+        "verification_ms": 0.0,
+        "generation_ms": 24050.24,
+        "total_e2e_ms": 38137.93
+      },
+      "reply_snippet": "Based on the verified evidence records, Arjun Malhotra made 17 financial transactions in August 2026. The transactions a"
+    },
+    {
+      "query_id": "Q-FIN-02",
+      "query": "Show suspicious transfers and smurfing involving BANK1001",
+      "category": "Financial",
+      "expected_leaves": [
+        "financial.suspicious_transactions",
+        "financial.mule_flows"
+      ],
+      "selected_leaves": [
+        "financial.suspicious_transactions",
+        "financial.mule_flows"
+      ],
+      "rejected_leaves": [],
+      "hit_at_1": true,
+      "hit_at_3": true,
+      "reciprocal_rank": 1.0,
+      "all_leaves_recalled": true,
+      "has_invalid_node": false,
+      "claims_count": 7,
+      "unsupported_claims_count": 0,
+      "abstention_expected": false,
+      "abstention_triggered": false,
+      "latency_breakdown_ms": {
+        "routing_ms": 14272.27,
+        "retrieval_ms": 189.83,
+        "normalization_ms": 0.0,
+        "verification_ms": 0.0,
+        "generation_ms": 22273.82,
+        "total_e2e_ms": 36736.53
+      },
+      "reply_snippet": "Based on the provided evidence, there are suspicious transfers and potential smurfing activities involving BANK1001. Spe"
+    },
+    {
+      "query_id": "Q-TEL-01",
+      "query": "Show call logs and call duration for phone 9811001001",
+      "category": "Telecom",
+      "expected_leaves": [
+        "telecom.cdr_records"
+      ],
+      "selected_leaves": [
+        "telecom.cdr_records"
+      ],
+      "rejected_leaves": [],
+      "hit_at_1": true,
+      "hit_at_3": true,
+      "reciprocal_rank": 1.0,
+      "all_leaves_recalled": true,
+      "has_invalid_node": false,
+      "claims_count": 5,
+      "unsupported_claims_count": 0,
+      "abstention_expected": false,
+      "abstention_triggered": false,
+      "latency_breakdown_ms": {
+        "routing_ms": 0.0,
+        "retrieval_ms": 452.6,
+        "normalization_ms": 0.83,
+        "verification_ms": 0.0,
+        "generation_ms": 23896.38,
+        "total_e2e_ms": 24349.81
+      },
+      "reply_snippet": "Based on the provided evidence, the call logs and call durations for phone number +919811001001 are as follows:  - A cal"
+    },
+    {
+      "query_id": "Q-TEL-02",
+      "query": "What IP data sessions connected to destination 185.44.77.9?",
+      "category": "Telecom",
+      "expected_leaves": [
+        "telecom.ipdr_sessions"
+      ],
+      "selected_leaves": [
+        "telecom.ipdr_sessions"
+      ],
+      "rejected_leaves": [],
+      "hit_at_1": true,
+      "hit_at_3": true,
+      "reciprocal_rank": 1.0,
+      "all_leaves_recalled": true,
+      "has_invalid_node": false,
+      "claims_count": 3,
+      "unsupported_claims_count": 0,
+      "abstention_expected": false,
+      "abstention_triggered": false,
+      "latency_breakdown_ms": {
+        "routing_ms": 0.0,
+        "retrieval_ms": 293.91,
+        "normalization_ms": 0.0,
+        "verification_ms": 0.0,
+        "generation_ms": 21735.19,
+        "total_e2e_ms": 22029.65
+      },
+      "reply_snippet": "**Query:** How many unique client IPs initiated a session with the destination IP 185.44.77.9 on August 13, 2026?  **Ans"
+    },
+    {
+      "query_id": "Q-GEO-01",
+      "query": "Where was Arjun Malhotra located during the investigation window?",
+      "category": "Geographical",
+      "expected_leaves": [
+        "geo.location_history"
+      ],
+      "selected_leaves": [
+        "geo.location_history"
+      ],
+      "rejected_leaves": [],
+      "hit_at_1": true,
+      "hit_at_3": true,
+      "reciprocal_rank": 1.0,
+      "all_leaves_recalled": true,
+      "has_invalid_node": false,
+      "claims_count": 6,
+      "unsupported_claims_count": 0,
+      "abstention_expected": false,
+      "abstention_triggered": false,
+      "latency_breakdown_ms": {
+        "routing_ms": 12737.77,
+        "retrieval_ms": 221.06,
+        "normalization_ms": 0.0,
+        "verification_ms": 0.0,
+        "generation_ms": 19606.66,
+        "total_e2e_ms": 32565.49
+      },
+      "reply_snippet": "Based on the verified evidence, Arjun Malhotra was located in the vicinity of CELL-08 during the investigation window. T"
+    },
+    {
+      "query_id": "Q-TEM-01",
+      "query": "Show the chronological sequence of events for Arjun Malhotra",
+      "category": "Temporal",
+      "expected_leaves": [
+        "temporal.timeline_events"
+      ],
+      "selected_leaves": [
+        "temporal.timeline_events"
+      ],
+      "rejected_leaves": [],
+      "hit_at_1": true,
+      "hit_at_3": true,
+      "reciprocal_rank": 1.0,
+      "all_leaves_recalled": true,
+      "has_invalid_node": false,
+      "claims_count": 9,
+      "unsupported_claims_count": 0,
+      "abstention_expected": false,
+      "abstention_triggered": false,
+      "latency_breakdown_ms": {
+        "routing_ms": 12168.63,
+        "retrieval_ms": 6485.91,
+        "normalization_ms": 0.62,
+        "verification_ms": 0.0,
+        "generation_ms": 22203.34,
+        "total_e2e_ms": 40859.02
+      },
+      "reply_snippet": "Based on the provided evidence, I will answer the query by adhering strictly to the EVIDENTIARY RULES, which typically r"
+    },
+    {
+      "query_id": "Q-TEM-03",
+      "query": "Did any phone call immediately precede a bank transfer?",
+      "category": "Temporal",
+      "expected_leaves": [
+        "temporal.cross_modal_correlation"
+      ],
+      "selected_leaves": [
+        "temporal.cross_modal_correlation"
+      ],
+      "rejected_leaves": [],
+      "hit_at_1": true,
+      "hit_at_3": true,
+      "reciprocal_rank": 1.0,
+      "all_leaves_recalled": true,
+      "has_invalid_node": false,
+      "claims_count": 6,
+      "unsupported_claims_count": 2,
+      "abstention_expected": false,
+      "abstention_triggered": false,
+      "latency_breakdown_ms": {
+        "routing_ms": 11494.76,
+        "retrieval_ms": 6.06,
+        "normalization_ms": 0.0,
+        "verification_ms": 0.0,
+        "generation_ms": 17200.49,
+        "total_e2e_ms": 28701.31
+      },
+      "reply_snippet": "Based on the verified evidence, there is a phone call that immediately precedes a bank transfer. The evidence [EV-TEMPOR"
+    },
+    {
+      "query_id": "Q-ANM-01",
+      "query": "What are the critical anomaly findings in this case?",
+      "category": "Anomaly",
+      "expected_leaves": [
+        "anomaly.findings"
+      ],
+      "selected_leaves": [
+        "anomaly.findings"
+      ],
+      "rejected_leaves": [],
+      "hit_at_1": true,
+      "hit_at_3": true,
+      "reciprocal_rank": 1.0,
+      "all_leaves_recalled": true,
+      "has_invalid_node": false,
+      "claims_count": 7,
+      "unsupported_claims_count": 0,
+      "abstention_expected": false,
+      "abstention_triggered": false,
+      "latency_breakdown_ms": {
+        "routing_ms": 11310.32,
+        "retrieval_ms": 127.64,
+        "normalization_ms": 0.0,
+        "verification_ms": 0.0,
+        "generation_ms": 23510.66,
+        "total_e2e_ms": 34948.61
+      },
+      "reply_snippet": "The critical anomaly findings in this case, based on the verified evidence, highlight several synchronized and coordinat"
+    },
+    {
+      "query_id": "Q-ANM-04",
+      "query": "What is the Triple Collision Burst alert?",
+      "category": "Anomaly",
+      "expected_leaves": [
+        "anomaly.cep_alerts"
+      ],
+      "selected_leaves": [
+        "anomaly.cep_alerts"
+      ],
+      "rejected_leaves": [],
+      "hit_at_1": true,
+      "hit_at_3": true,
+      "reciprocal_rank": 1.0,
+      "all_leaves_recalled": true,
+      "has_invalid_node": false,
+      "claims_count": 3,
+      "unsupported_claims_count": 0,
+      "abstention_expected": false,
+      "abstention_triggered": false,
+      "latency_breakdown_ms": {
+        "routing_ms": 10983.51,
+        "retrieval_ms": 21.49,
+        "normalization_ms": 0.0,
+        "verification_ms": 0.0,
+        "generation_ms": 13612.63,
+        "total_e2e_ms": 24618.74
+      },
+      "reply_snippet": "The Triple Collision Burst alert is a critical anomaly detected in the system, indicating that the entity Arjun Malhotra"
+    },
+    {
+      "query_id": "Q-GRP-01",
+      "query": "Find multi-hop connections between Arjun Malhotra and Dev Khanna",
+      "category": "Knowledge Graph",
+      "expected_leaves": [
+        "graph.connections"
+      ],
+      "selected_leaves": [
+        "graph.connections"
+      ],
+      "rejected_leaves": [],
+      "hit_at_1": true,
+      "hit_at_3": true,
+      "reciprocal_rank": 1.0,
+      "all_leaves_recalled": true,
+      "has_invalid_node": false,
+      "claims_count": 6,
+      "unsupported_claims_count": 0,
+      "abstention_expected": false,
+      "abstention_triggered": false,
+      "latency_breakdown_ms": {
+        "routing_ms": 14847.82,
+        "retrieval_ms": 1453.88,
+        "normalization_ms": 0.0,
+        "verification_ms": 0.76,
+        "generation_ms": 22744.6,
+        "total_e2e_ms": 39047.63
+      },
+      "reply_snippet": "Based on the verified evidence records, there are no direct connections between Arjun Malhotra and Dev Khanna. The evide"
+    },
+    {
+      "query_id": "Q-REP-01",
+      "query": "Generate the formal court dossier report with evidence hashes",
+      "category": "Reports",
+      "expected_leaves": [
+        "reports.court_dossier"
+      ],
+      "selected_leaves": [
+        "reports.court_dossier"
+      ],
+      "rejected_leaves": [],
+      "hit_at_1": true,
+      "hit_at_3": true,
+      "reciprocal_rank": 1.0,
+      "all_leaves_recalled": true,
+      "has_invalid_node": false,
+      "claims_count": 5,
+      "unsupported_claims_count": 0,
+      "abstention_expected": false,
+      "abstention_triggered": false,
+      "latency_breakdown_ms": {
+        "routing_ms": 0.0,
+        "retrieval_ms": 602.24,
+        "normalization_ms": 0.0,
+        "verification_ms": 0.0,
+        "generation_ms": 16952.31,
+        "total_e2e_ms": 17555.67
+      },
+      "reply_snippet": "The formal court dossier report for Case INV-2026-BLACK-CIRCUIT, as derived from the evidence records, is as follows:  T"
+    },
+    {
+      "query_id": "Q-REP-02",
+      "query": "Show Section 65B Electronic Evidence Certificate for this case",
+      "category": "Reports",
+      "expected_leaves": [
+        "reports.section_65b"
+      ],
+      "selected_leaves": [
+        "reports.section_65b"
+      ],
+      "rejected_leaves": [],
+      "hit_at_1": true,
+      "hit_at_3": true,
+      "reciprocal_rank": 1.0,
+      "all_leaves_recalled": true,
+      "has_invalid_node": false,
+      "claims_count": 4,
+      "unsupported_claims_count": 0,
+      "abstention_expected": false,
+      "abstention_triggered": false,
+      "latency_breakdown_ms": {
+        "routing_ms": 0.0,
+        "retrieval_ms": 5.34,
+        "normalization_ms": 0.52,
+        "verification_ms": 0.0,
+        "generation_ms": 13542.74,
+        "total_e2e_ms": 13548.6
+      },
+      "reply_snippet": "The Section 65B Electronic Evidence Certificate for this case, as per the verified evidence record [EV-REPORTS-SECTION_6"
+    },
+    {
+      "query_id": "Q-MUL-01",
+      "query": "Where was Arjun Malhotra when his suspicious transfers took place in Sector 22?",
+      "category": "Multi-Source",
+      "expected_leaves": [
+        "financial.suspicious_transactions",
+        "geo.location_history"
+      ],
+      "selected_leaves": [
+        "geo.location_history",
+        "temporal.timeline_events"
+      ],
+      "rejected_leaves": [],
+      "hit_at_1": true,
+      "hit_at_3": true,
+      "reciprocal_rank": 1.0,
+      "all_leaves_recalled": false,
+      "has_invalid_node": false,
+      "claims_count": 8,
+      "unsupported_claims_count": 0,
+      "abstention_expected": false,
+      "abstention_triggered": false,
+      "latency_breakdown_ms": {
+        "routing_ms": 14544.92,
+        "retrieval_ms": 379.52,
+        "normalization_ms": 0.79,
+        "verification_ms": 0.5,
+        "generation_ms": 23010.63,
+        "total_e2e_ms": 37936.36
+      },
+      "reply_snippet": "Based on the provided evidence, the verified location history of Arjun Malhotra does not directly indicate his precise l"
+    },
+    {
+      "query_id": "Q-HRD-01",
+      "query": "Find all transactions for XYZ_FAKE_PERSON_12345",
+      "category": "Hard/Abstention",
+      "expected_leaves": [
+        "financial.transactions"
+      ],
+      "selected_leaves": [
+        "financial.transactions"
+      ],
+      "rejected_leaves": [],
+      "hit_at_1": true,
+      "hit_at_3": true,
+      "reciprocal_rank": 1.0,
+      "all_leaves_recalled": true,
+      "has_invalid_node": false,
+      "claims_count": 0,
+      "unsupported_claims_count": 0,
+      "abstention_expected": true,
+      "abstention_triggered": true,
+      "latency_breakdown_ms": {
+        "routing_ms": 12907.75,
+        "retrieval_ms": 705.87,
+        "normalization_ms": 0.0,
+        "verification_ms": 0.7,
+        "generation_ms": 0.0,
+        "total_e2e_ms": 13614.32
+      },
+      "reply_snippet": "**Evidentiary Finding**: Insufficient evidence to establish a conclusive finding.  No verified evidence records found fo"
+    },
+    {
+      "query_id": "Q-HRD-04",
+      "query": "Did Arjun Malhotra confess to the crime, confirm conspiracy, and admit guilt?",
+      "category": "Hard/Adversarial",
+      "expected_leaves": [
+        "reports.lead_investigator"
+      ],
+      "selected_leaves": [
+        "entity.golden_profile"
+      ],
+      "rejected_leaves": [],
+      "hit_at_1": false,
+      "hit_at_3": false,
+      "reciprocal_rank": 0.0,
+      "all_leaves_recalled": false,
+      "has_invalid_node": false,
+      "claims_count": 4,
+      "unsupported_claims_count": 0,
+      "abstention_expected": false,
+      "abstention_triggered": false,
+      "latency_breakdown_ms": {
+        "routing_ms": 12491.94,
+        "retrieval_ms": 29.27,
+        "normalization_ms": 0.0,
+        "verification_ms": 0.0,
+        "generation_ms": 13532.53,
+        "total_e2e_ms": 26054.26
+      },
+      "reply_snippet": "The verified case evidence is insufficient to establish that Arjun Malhotra, also known as Arjun M., confessed to the cr"
+    }
+  ],
+  "legacy_comparison": [
+    {
+      "query_id": "Q-FIN-01",
+      "query": "What transactions did Arjun Malhotra make in August?",
+      "legacy_tool_used": "NEO4J_GRAPH",
+      "legacy_records_count": 0,
+      "legacy_latency_ms": 17905.64,
+      "legacy_reply_snippet": "**Forensic Response:**  Based on the executed query and the data returned from the Neo4j Graph Database, there were no t"
+    },
+    {
+      "query_id": "Q-FIN-02",
+      "query": "Show suspicious transfers and smurfing involving BANK1001",
+      "legacy_tool_used": "POSTGRES_ANOMALIES",
+      "legacy_records_count": 25,
+      "legacy_latency_ms": 17150.82,
+      "legacy_reply_snippet": "Based on the current case facts and the data provided, there are several suspicious transfers and potential smurfing act"
+    },
+    {
+      "query_id": "Q-TEL-01",
+      "query": "Show call logs and call duration for phone 9811001001",
+      "legacy_tool_used": "NEO4J_GRAPH",
+      "legacy_records_count": 0,
+      "legacy_latency_ms": 17181.22,
+      "legacy_reply_snippet": "**Forensic Response:**  Based on the executed query and the data returned, there are no call logs or call durations reco"
+    },
+    {
+      "query_id": "Q-TEL-02",
+      "query": "What IP data sessions connected to destination 185.44.77.9?",
+      "legacy_tool_used": "NEO4J_GRAPH",
+      "legacy_records_count": 15,
+      "legacy_latency_ms": 30533.96,
+      "legacy_reply_snippet": "Based on the query executed and the data returned from the Neo4j Graph Database, the following IP data sessions connecte"
+    },
+    {
+      "query_id": "Q-GEO-01",
+      "query": "Where was Arjun Malhotra located during the investigation window?",
+      "legacy_tool_used": "POSTGRES_PROFILES",
+      "legacy_records_count": 10,
+      "legacy_latency_ms": 26352.08,
+      "legacy_reply_snippet": "**Arjun Malhotra** was located within the investigation window in proximity to **Sameer Gill** and **Nisha Bedi** based "
+    },
+    {
+      "query_id": "Q-TEM-01",
+      "query": "Show the chronological sequence of events for Arjun Malhotra",
+      "legacy_tool_used": "NEO4J_GRAPH",
+      "legacy_records_count": 15,
+      "legacy_latency_ms": 31034.81,
+      "legacy_reply_snippet": "**Chronological Sequence of Events for Arjun Malhotra:**  Based on the data retrieved from the Neo4j Graph Database, the"
+    },
+    {
+      "query_id": "Q-TEM-03",
+      "query": "Did any phone call immediately precede a bank transfer?",
+      "legacy_tool_used": "NEO4J_GRAPH",
+      "legacy_records_count": 0,
+      "legacy_latency_ms": 17409.5,
+      "legacy_reply_snippet": "**Forensic Response:**  Based on the executed query and the data returned, there are no records of any phone calls immed"
+    },
+    {
+      "query_id": "Q-ANM-01",
+      "query": "What are the critical anomaly findings in this case?",
+      "legacy_tool_used": "POSTGRES_ANOMALIES",
+      "legacy_records_count": 16,
+      "legacy_latency_ms": 17573.35,
+      "legacy_reply_snippet": "**Critical Anomaly Findings in Case INV-2026-BLACK-CIRCUIT:**  The critical anomaly findings in this case highlight soph"
+    },
+    {
+      "query_id": "Q-ANM-04",
+      "query": "What is the Triple Collision Burst alert?",
+      "legacy_tool_used": "POSTGRES_ALERTS",
+      "legacy_records_count": 4,
+      "legacy_latency_ms": 17635.92,
+      "legacy_reply_snippet": "**Triple Collision Burst** is a critical alert pattern detected in the CEP Alert System for the case **INV-2026-BLACK-CI"
+    },
+    {
+      "query_id": "Q-GRP-01",
+      "query": "Find multi-hop connections between Arjun Malhotra and Dev Khanna",
+      "legacy_tool_used": "NEO4J_GRAPH",
+      "legacy_records_count": 15,
+      "legacy_latency_ms": 32422.08,
+      "legacy_reply_snippet": "Based on the executed query and the data returned, **Arjun Malhotra** and **Dev Khanna** are connected through multi-hop"
+    },
+    {
+      "query_id": "Q-REP-01",
+      "query": "Generate the formal court dossier report with evidence hashes",
+      "legacy_tool_used": "POSTGRES_EVIDENCE",
+      "legacy_records_count": 0,
+      "legacy_latency_ms": 17153.8,
+      "legacy_reply_snippet": "**Forensic Response:**  Based on the current case facts and the provided data, the court dossier report for the active c"
+    },
+    {
+      "query_id": "Q-REP-02",
+      "query": "Show Section 65B Electronic Evidence Certificate for this case",
+      "legacy_tool_used": "POSTGRES_EVIDENCE",
+      "legacy_records_count": 0,
+      "legacy_latency_ms": 16835.21,
+      "legacy_reply_snippet": "**Forensic Response:**  Based on the current case facts and the provided data, there is no **Section 65B Electronic Evid"
+    },
+    {
+      "query_id": "Q-MUL-01",
+      "query": "Where was Arjun Malhotra when his suspicious transfers took place in Sector 22?",
+      "legacy_tool_used": "POSTGRES_ANOMALIES",
+      "legacy_records_count": 25,
+      "legacy_latency_ms": 17231.1,
+      "legacy_reply_snippet": "Based on the data from the Anomaly Detection Engine, **Arjun Malhotra** was in the vicinity of **GPS_PROXIMITY** during "
+    },
+    {
+      "query_id": "Q-HRD-01",
+      "query": "Find all transactions for XYZ_FAKE_PERSON_12345",
+      "legacy_tool_used": "NEO4J_GRAPH",
+      "legacy_records_count": 0,
+      "legacy_latency_ms": 16769.36,
+      "legacy_reply_snippet": "**Forensic Response:**  Based on the executed query and the data returned, there are no transactions found for **XYZ_FAK"
+    },
+    {
+      "query_id": "Q-HRD-04",
+      "query": "Did Arjun Malhotra confess to the crime, confirm conspiracy, and admit guilt?",
+      "legacy_tool_used": "POSTGRES_PROFILES",
+      "legacy_records_count": 10,
+      "legacy_latency_ms": 24697.62,
+      "legacy_reply_snippet": "Based on the current case facts and the data provided, **Arjun Malhotra** has not confessed to the crime, confirmed cons"
+    }
+  ]
+}
