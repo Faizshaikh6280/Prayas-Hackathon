@@ -7,7 +7,7 @@ import {
   GitBranch, Network, Activity, Layers, Scale, Sparkles, Filter, Search,
   ChevronDown, ChevronRight, Copy, Check, FileCheck, Landmark, Globe,
   MapPin, Smartphone, CreditCard, Cpu, Shield, AlertOctagon, Users,
-  Radio, ArrowRight, CornerDownRight, Zap, ArrowLeftRight, CheckCheck, Eye
+  Radio, ArrowRight, CornerDownRight, Zap, ArrowLeftRight, CheckCheck, Eye, ExternalLink, Wifi, Code2
 } from 'lucide-react';
 import { useCase } from '../context/CaseContext';
 import { useAuth } from '../context/AuthContext';
@@ -21,6 +21,24 @@ import {
   HighPriorityAlert
 } from '../services/apiClient';
 import { cn } from '../utils/cn';
+
+export const DEFAULT_NETWORK_IP = '10.129.251.37';
+
+export function resolveNetworkBaseUrl(customIp?: string): string {
+  if (typeof window === 'undefined') return `http://${DEFAULT_NETWORK_IP}:3000`;
+  const ip = (customIp && customIp.trim()) ? customIp.trim() : DEFAULT_NETWORK_IP;
+  const port = window.location.port ? `:${window.location.port}` : ':3000';
+  const protocol = window.location.protocol || 'http:';
+
+  // If user already accessed through network IP or domain (not localhost / 127.0.0.1)
+  const host = window.location.hostname;
+  if (host && host !== 'localhost' && host !== '127.0.0.1' && !host.startsWith('127.')) {
+    return `${protocol}//${host}${port}`;
+  }
+
+  // If on localhost, use the machine's LAN IP so mobile phone camera scanning works!
+  return `${protocol}//${ip}${port}`;
+}
 
 type DossierTab = 
   | 'overview' 
@@ -51,6 +69,13 @@ export default function CaseDossierExporter() {
   const [logFilterDomain, setLogFilterDomain] = useState<string>('ALL');
   const [logSearchQuery, setLogSearchQuery] = useState<string>('');
   
+  // Evidence Records Inspector States
+  const [selectedEvidenceFile, setSelectedEvidenceFile] = useState<string>('ALL');
+  const [evidenceSearchQuery, setEvidenceSearchQuery] = useState<string>('');
+  const [evidenceViewMode, setEvidenceViewMode] = useState<'json' | 'cards'>('json');
+  const [copiedRecordIdx, setCopiedRecordIdx] = useState<number | null>(null);
+  const [copiedEvidenceJson, setCopiedEvidenceJson] = useState<boolean>(false);
+
   // Entity Tab States
   const [entitySearch, setEntitySearch] = useState<string>('');
   const [selectedEntityId, setSelectedEntityId] = useState<string | null>(null);
@@ -62,6 +87,10 @@ export default function CaseDossierExporter() {
   const [expandedBriefs, setExpandedBriefs] = useState<Record<string, boolean>>({});
 
   const [copiedHash, setCopiedHash] = useState<string | null>(null);
+  const [copiedVerificationLink, setCopiedVerificationLink] = useState(false);
+  const [networkIp, setNetworkIp] = useState<string>(DEFAULT_NETWORK_IP);
+  const [isEditingIp, setIsEditingIp] = useState<boolean>(false);
+  const [tempIp, setTempIp] = useState<string>(DEFAULT_NETWORK_IP);
 
   // Async States
   const [isLoadingData, setIsLoadingData] = useState<boolean>(false);
@@ -79,10 +108,74 @@ export default function CaseDossierExporter() {
   const targetCaseRef = activeCase?.case_reference || 'INV-2026-773325';
   const targetTitle = activeCase?.title || 'Kidnapping Case';
 
+  const networkBaseUrl = useMemo(() => {
+    return resolveNetworkBaseUrl(networkIp);
+  }, [networkIp]);
+
+  // Load dynamic network config on mount
+  useEffect(() => {
+    fetch('/api/network-ip')
+      .then(res => res.json())
+      .then(data => {
+        if (data?.ip) {
+          setNetworkIp(data.ip);
+          setTempIp(data.ip);
+        }
+      })
+      .catch(() => {
+        fetch('/network_config.json')
+          .then(res => res.json())
+          .then(data => {
+            if (data?.ip) {
+              setNetworkIp(data.ip);
+              setTempIp(data.ip);
+            }
+          })
+          .catch(() => {});
+      });
+  }, []);
+
+  const handleSaveNetworkIp = async (newIp: string) => {
+    const clean = newIp.trim().replace(/^https?:\/\//, '').split(':')[0].split('/')[0];
+    if (!clean) return;
+    setNetworkIp(clean);
+    setIsEditingIp(false);
+    try {
+      await fetch('/api/network-ip', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ip: clean })
+      });
+      setStatusMessage({ type: 'success', text: `Wi-Fi IP updated to ${clean}. QR code regenerated!` });
+      setTimeout(() => setStatusMessage(null), 3500);
+    } catch (err) {
+      console.warn('Could not persist network IP:', err);
+    }
+  };
+
+  const verificationUrl = useMemo(() => {
+    const tok = dossierData?.verification_metadata?.verification_token || '';
+    return `${networkBaseUrl}/verify-case?case_id=${encodeURIComponent(targetCaseId)}${tok ? `&token=${encodeURIComponent(tok)}` : ''}`;
+  }, [networkBaseUrl, dossierData, targetCaseId]);
+
+  const handleCopyVerificationUrl = () => {
+    if (typeof window !== 'undefined') {
+      navigator.clipboard.writeText(verificationUrl);
+      setCopiedVerificationLink(true);
+      setTimeout(() => setCopiedVerificationLink(false), 2500);
+    }
+  };
+
+  const handleOpenVerificationPortal = () => {
+    if (typeof window !== 'undefined') {
+      window.open(verificationUrl, '_blank');
+    }
+  };
+
   // Load Dossier Data & Custody Verification on Mount or Case Change
   useEffect(() => {
     loadAllCourtData();
-  }, [targetCaseId]);
+  }, [targetCaseId, networkBaseUrl]);
 
   const loadAllCourtData = async () => {
     setIsLoadingData(true);
@@ -93,7 +186,8 @@ export default function CaseDossierExporter() {
           investigatorName: officerName,
           investigatorId: officerId,
           agencyName: agencyName,
-          classification: classification
+          classification: classification,
+          verificationBaseUrl: networkBaseUrl
         }),
         apiClient.verifyCustody(targetCaseId)
       ]);
@@ -130,7 +224,8 @@ export default function CaseDossierExporter() {
         investigatorName: officerName,
         investigatorId: officerId,
         agencyName: agencyName,
-        classification: classification
+        classification: classification,
+        verificationBaseUrl: networkBaseUrl
       });
 
       const url = window.URL.createObjectURL(blob);
@@ -156,7 +251,8 @@ export default function CaseDossierExporter() {
     try {
       const blob = await apiClient.downloadSection65BCertificatePdf({
         caseId: targetCaseId,
-        officerName: officerName
+        officerName: officerName,
+        verificationBaseUrl: networkBaseUrl
       });
 
       const url = window.URL.createObjectURL(blob);
@@ -236,6 +332,35 @@ export default function CaseDossierExporter() {
   const sec7 = dossierData?.section_7_audit_annexure;
   const alerts = dossierData?.high_priority_alerts || [];
   const aiScience = dossierData?.ai_forensic_science;
+
+  // Filtered Evidence Records from real backend payload
+  const displayedEvidenceRecords = useMemo(() => {
+    const inventory = sec1?.evidence_cryptographic_inventory || [];
+    let list: { record: Record<string, any>; file: string; system: string; idx: number }[] = [];
+
+    if (selectedEvidenceFile === 'ALL') {
+      inventory.forEach(inv => {
+        (inv.records || []).forEach((r, idx) => {
+          list.push({ record: r, file: inv.source_file_name, system: inv.original_source_system, idx: idx + 1 });
+        });
+      });
+    } else {
+      const target = inventory.find(inv => inv.source_file_name === selectedEvidenceFile);
+      if (target) {
+        (target.records || []).forEach((r, idx) => {
+          list.push({ record: r, file: target.source_file_name, system: target.original_source_system, idx: idx + 1 });
+        });
+      }
+    }
+
+    if (!evidenceSearchQuery.trim()) {
+      return list;
+    }
+    const q = evidenceSearchQuery.toLowerCase().trim();
+    return list.filter(item => {
+      return JSON.stringify(item.record).toLowerCase().includes(q) || item.file.toLowerCase().includes(q);
+    });
+  }, [sec1?.evidence_cryptographic_inventory, selectedEvidenceFile, evidenceSearchQuery]);
 
   // Filtered Resolved Entities
   const allResolvedEntities = useMemo(() => {
@@ -398,12 +523,110 @@ export default function CaseDossierExporter() {
       )}
 
       {/* ========================================================================= */}
+      {/* STATUTORY QR CODE & JUDICIAL AUTHENTICATION CARD                          */}
+      {/* ========================================================================= */}
+      <div className="bg-card border border-border rounded-2xl p-5 shadow-sm">
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-5">
+          <div className="flex items-start gap-4">
+            <div className="bg-white p-2 rounded-xl border border-border shadow-sm shrink-0 flex items-center justify-center">
+              <img
+                src={apiClient.getCaseQrUrl(targetCaseId, networkBaseUrl)}
+                alt="Case Judicial Verification QR"
+                className="w-20 h-20 object-contain"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="px-2.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 flex items-center gap-1">
+                  <CheckCircle2 className="w-3 h-3" />
+                  Statutory Non-Repudiation QR
+                </span>
+                <span className="text-xs text-muted-foreground font-mono">
+                  Token: {dossierData?.verification_metadata?.verification_token || 'VER-AUTHENTICATED'}
+                </span>
+              </div>
+              <h3 className="text-sm font-bold text-foreground">
+                Judicial QR Code Authentication & Live Scan Redirection
+              </h3>
+              <p className="text-xs text-muted-foreground max-w-2xl leading-relaxed">
+                Every generated dossier is permanently assigned a unique cryptographic QR code. Scanning with any smartphone or external terminal redirects to the official Law Enforcement Verification Portal to validate SHA-256 evidence integrity, Section 65B compliance, and officer sign-offs.
+              </p>
+              
+              {/* Network Scan URL Status (Mobile + PC) */}
+              <div className="flex flex-wrap items-center gap-2 pt-1 text-xs">
+                <span className="text-muted-foreground font-medium flex items-center gap-1">
+                  <Wifi className="w-3.5 h-3.5 text-indigo-500 dark:text-indigo-400" />
+                  Network Scan URL:
+                </span>
+                <code className="px-2 py-0.5 rounded bg-secondary font-mono font-bold text-foreground border border-border text-[11px]">
+                  {verificationUrl}
+                </code>
+                {!isEditingIp ? (
+                  <button
+                    type="button"
+                    onClick={() => { setIsEditingIp(true); setTempIp(networkIp); }}
+                    className="text-[11px] text-primary hover:underline font-semibold cursor-pointer"
+                  >
+                    (Change Wi-Fi IP)
+                  </button>
+                ) : (
+                  <div className="flex items-center gap-1">
+                    <input
+                      type="text"
+                      value={tempIp}
+                      onChange={(e) => setTempIp(e.target.value)}
+                      className="px-2 py-0.5 rounded border border-border bg-background text-xs font-mono w-28 text-foreground"
+                      placeholder="10.1.49.11"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => handleSaveNetworkIp(tempIp)}
+                      className="px-2 py-0.5 rounded bg-primary text-primary-foreground text-xs font-bold cursor-pointer"
+                    >
+                      Save
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setIsEditingIp(false)}
+                      className="px-2 py-0.5 rounded bg-secondary text-foreground text-xs cursor-pointer"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2.5 shrink-0 w-full md:w-auto">
+            <button
+              type="button"
+              onClick={handleCopyVerificationUrl}
+              className="flex-1 sm:flex-none px-3.5 py-2 rounded-xl bg-secondary hover:bg-secondary/80 text-foreground border border-border text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+            >
+              {copiedVerificationLink ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5 text-muted-foreground" />}
+              <span>{copiedVerificationLink ? 'Link Copied!' : 'Copy Verification Link'}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={handleOpenVerificationPortal}
+              className="flex-1 sm:flex-none px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-sm transition-all cursor-pointer"
+            >
+              <ExternalLink className="w-3.5 h-3.5" />
+              <span>Open Verification Portal</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* ========================================================================= */}
       {/* SECTION NAVIGATION TABS                                                   */}
       {/* ========================================================================= */}
       <div className="flex items-center gap-1.5 overflow-x-auto pb-1 border-b border-border scrollbar-none">
         {[
           { id: 'overview', label: 'Dossier Overview & Settings', icon: FileText },
-          { id: 'custody', label: '1. Legal Chain & Evidence Hash', icon: ShieldCheck },
+          { id: 'custody', label: '1. Legal Chain & Evidence Records (JSON)', icon: ShieldCheck },
           { id: 'synthesis', label: '2. Executive Synthesis & Risk', icon: Sparkles },
           { id: 'entity', label: `3. Resolved Entities (${sec3?.all_resolved_entities?.length || 9})`, icon: Users },
           { id: 'anomalies', label: `4. Anomalies (${sec4?.flagged_anomaly_registry?.length || 22})`, icon: AlertOctagon },
@@ -638,35 +861,52 @@ export default function CaseDossierExporter() {
             </span>
           </div>
 
-          {/* Metadata Block */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 p-4 bg-secondary/30 rounded-xl border border-border text-xs">
-            <div>
-              <span className="text-muted-foreground block text-[10px] uppercase font-bold">Case Reference</span>
-              <span className="font-mono font-bold text-foreground">{sec1.case_metadata.case_reference}</span>
+          {/* Metadata Block with Embedded QR Frame */}
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 p-4 bg-secondary/30 rounded-xl border border-border text-xs">
+            <div className="lg:col-span-3 grid grid-cols-2 sm:grid-cols-3 gap-4">
+              <div>
+                <span className="text-muted-foreground block text-[10px] uppercase font-bold">Case Reference</span>
+                <span className="font-mono font-bold text-foreground">{sec1.case_metadata.case_reference}</span>
+              </div>
+              <div>
+                <span className="text-muted-foreground block text-[10px] uppercase font-bold">Case File ID</span>
+                <span className="font-mono text-foreground">{sec1.case_metadata.case_file_id}</span>
+              </div>
+              <div>
+                <span className="text-muted-foreground block text-[10px] uppercase font-bold">Investigating Officer</span>
+                <span className="font-bold text-foreground">{sec1.case_metadata.investigating_officer_name} ({sec1.case_metadata.investigating_officer_id})</span>
+              </div>
+              <div>
+                <span className="text-muted-foreground block text-[10px] uppercase font-bold">Target Operation</span>
+                <span className="font-bold text-foreground">{sec1.case_metadata.target_operation_name}</span>
+              </div>
+              <div>
+                <span className="text-muted-foreground block text-[10px] uppercase font-bold">Report Timestamp (UTC)</span>
+                <span className="font-mono text-foreground">{sec1.case_metadata.report_generation_timestamp_utc}</span>
+              </div>
+              <div>
+                <span className="text-muted-foreground block text-[10px] uppercase font-bold">Report Timestamp (Local)</span>
+                <span className="font-mono text-foreground">{sec1.case_metadata.report_generation_timestamp_local}</span>
+              </div>
+              <div className="col-span-2 sm:col-span-3">
+                <span className="text-muted-foreground block text-[10px] uppercase font-bold">Official Jurisdiction & Agency</span>
+                <span className="font-bold text-foreground">{sec1.case_metadata.agency_name}</span>
+              </div>
             </div>
-            <div>
-              <span className="text-muted-foreground block text-[10px] uppercase font-bold">Case File ID</span>
-              <span className="font-mono text-foreground">{sec1.case_metadata.case_file_id}</span>
-            </div>
-            <div>
-              <span className="text-muted-foreground block text-[10px] uppercase font-bold">Investigating Officer</span>
-              <span className="font-bold text-foreground">{sec1.case_metadata.investigating_officer_name} ({sec1.case_metadata.investigating_officer_id})</span>
-            </div>
-            <div>
-              <span className="text-muted-foreground block text-[10px] uppercase font-bold">Target Operation</span>
-              <span className="font-bold text-foreground">{sec1.case_metadata.target_operation_name}</span>
-            </div>
-            <div>
-              <span className="text-muted-foreground block text-[10px] uppercase font-bold">Report Timestamp (UTC)</span>
-              <span className="font-mono text-foreground">{sec1.case_metadata.report_generation_timestamp_utc}</span>
-            </div>
-            <div>
-              <span className="text-muted-foreground block text-[10px] uppercase font-bold">Report Timestamp (Local)</span>
-              <span className="font-mono text-foreground">{sec1.case_metadata.report_generation_timestamp_local}</span>
-            </div>
-            <div className="col-span-2">
-              <span className="text-muted-foreground block text-[10px] uppercase font-bold">Official Jurisdiction & Agency</span>
-              <span className="font-bold text-foreground">{sec1.case_metadata.agency_name}</span>
+
+            {/* Embedded Header QR */}
+            <div className="flex flex-col items-center justify-center p-3 bg-card rounded-xl border border-border text-center space-y-1.5 shadow-sm">
+              <div className="bg-white p-1 rounded-lg border shadow-xs">
+                <img
+                  src={apiClient.getCaseQrUrl(targetCaseId, networkBaseUrl)}
+                  alt="Section 1 Verification QR"
+                  className="w-16 h-16 object-contain"
+                />
+              </div>
+              <span className="text-[10px] font-bold text-foreground uppercase tracking-wider">SCAN TO VERIFY</span>
+              <span className="text-[9px] font-mono text-emerald-600 dark:text-emerald-400 font-bold bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20">
+                SEC. 65B SIGNED
+              </span>
             </div>
           </div>
 
@@ -726,6 +966,226 @@ export default function CaseDossierExporter() {
                 </tbody>
               </table>
             </div>
+          </div>
+
+          {/* ================================================================= */}
+          {/* CRUCIAL EVIDENCE & RAW RECORDS IN JSON FORMAT (LIVE FROM DB)      */}
+          {/* ================================================================= */}
+          <div className="space-y-4 pt-4 border-t border-border">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <Code2 className="w-4 h-4 text-indigo-500 dark:text-indigo-400" />
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-foreground">
+                    Crucial Evidence Records (Formatted JSON Inspector)
+                  </h3>
+                  <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold border border-emerald-500/20">
+                    LIVE FROM DB / VAULT
+                  </span>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Inspect the exact underlying forensic records ingested into the platform upon which all entity resolutions and anomalies are mathematically grounded.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const jsonStr = JSON.stringify(displayedEvidenceRecords.map(d => d.record), null, 2);
+                    navigator.clipboard.writeText(jsonStr);
+                    setCopiedEvidenceJson(true);
+                    setTimeout(() => setCopiedEvidenceJson(false), 2500);
+                  }}
+                  className="px-3 py-1.5 rounded-lg bg-secondary hover:bg-secondary/80 text-foreground border border-border text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer"
+                >
+                  {copiedEvidenceJson ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5 text-muted-foreground" />}
+                  <span>{copiedEvidenceJson ? 'JSON Copied!' : 'Copy Records JSON'}</span>
+                </button>
+              </div>
+            </div>
+
+            {/* File Selector Chips */}
+            <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
+              <button
+                type="button"
+                onClick={() => setSelectedEvidenceFile('ALL')}
+                className={cn(
+                  "px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors border cursor-pointer",
+                  selectedEvidenceFile === 'ALL'
+                    ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                    : "bg-secondary/50 text-muted-foreground border-border hover:text-foreground hover:bg-secondary"
+                )}
+              >
+                All Sources ({(sec1?.evidence_cryptographic_inventory || []).reduce((acc, f) => acc + (f.records?.length || 0), 0)} records)
+              </button>
+
+              {(sec1?.evidence_cryptographic_inventory || []).map((file, fIdx) => (
+                <button
+                  key={fIdx}
+                  type="button"
+                  onClick={() => setSelectedEvidenceFile(file.source_file_name)}
+                  className={cn(
+                    "px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors border flex items-center gap-1.5 cursor-pointer",
+                    selectedEvidenceFile === file.source_file_name
+                      ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                      : "bg-secondary/50 text-muted-foreground border-border hover:text-foreground hover:bg-secondary"
+                  )}
+                >
+                  <FileText className="w-3.5 h-3.5 opacity-70" />
+                  <span>{file.source_file_name}</span>
+                  <span className="text-[10px] font-mono opacity-80">({file.records?.length || file.raw_records_count || 0})</span>
+                </button>
+              ))}
+            </div>
+
+            {/* Search Bar & View Mode Toggle */}
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-1">
+              <div className="relative w-full sm:w-80">
+                <Search className="w-3.5 h-3.5 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  value={evidenceSearchQuery}
+                  onChange={(e) => setEvidenceSearchQuery(e.target.value)}
+                  placeholder="Filter records by phone, account, name, amount..."
+                  className="w-full bg-secondary/60 border border-border rounded-xl pl-9 pr-3 py-1.5 text-xs text-foreground placeholder-muted-foreground outline-none focus:border-primary"
+                />
+              </div>
+
+              <div className="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-end">
+                <span className="text-xs text-muted-foreground font-mono">
+                  Showing {displayedEvidenceRecords.length} records
+                </span>
+
+                <div className="flex items-center bg-secondary border border-border rounded-lg p-0.5">
+                  <button
+                    type="button"
+                    onClick={() => setEvidenceViewMode('json')}
+                    className={cn(
+                      "px-2.5 py-1 rounded text-xs font-semibold transition-colors flex items-center gap-1 cursor-pointer",
+                      evidenceViewMode === 'json' ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    <Code2 className="w-3.5 h-3.5" />
+                    <span>JSON View</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setEvidenceViewMode('cards')}
+                    className={cn(
+                      "px-2.5 py-1 rounded text-xs font-semibold transition-colors flex items-center gap-1 cursor-pointer",
+                      evidenceViewMode === 'cards' ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    <Layers className="w-3.5 h-3.5" />
+                    <span>Card View</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Displayed Records (JSON or Card) */}
+            {displayedEvidenceRecords.length === 0 ? (
+              <div className="p-8 border border-border rounded-xl text-center text-muted-foreground text-xs bg-secondary/20">
+                No evidence records found matching criteria.
+              </div>
+            ) : evidenceViewMode === 'json' ? (
+              <div className="space-y-3 max-h-[500px] overflow-y-auto pr-1">
+                {displayedEvidenceRecords.map((item, rIdx) => (
+                  <div key={rIdx} className="bg-slate-950 border border-slate-800 rounded-xl overflow-hidden shadow-sm">
+                    <div className="bg-slate-900/90 px-4 py-1.5 border-b border-slate-800 flex items-center justify-between text-xs">
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono text-indigo-400 font-bold text-[11px]">
+                          RECORD #{String(item.idx).padStart(2, '0')}
+                        </span>
+                        <span className="text-slate-600">•</span>
+                        <span className="text-slate-300 font-medium">{item.file}</span>
+                        <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
+                          {item.system}
+                        </span>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          navigator.clipboard.writeText(JSON.stringify(item.record, null, 2));
+                          setCopiedRecordIdx(rIdx);
+                          setTimeout(() => setCopiedRecordIdx(null), 2500);
+                        }}
+                        className="text-slate-400 hover:text-white flex items-center gap-1 text-[11px] transition-colors cursor-pointer"
+                      >
+                        {copiedRecordIdx === rIdx ? (
+                          <>
+                            <Check className="w-3 h-3 text-emerald-400" />
+                            <span className="text-emerald-400 font-semibold">Copied!</span>
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="w-3 h-3" />
+                            <span>Copy Record JSON</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+
+                    <div className="p-3.5 font-mono text-xs overflow-x-auto text-slate-200">
+                      <pre className="text-[11.5px] leading-relaxed">
+                        <span className="text-slate-500">{"{"}</span>
+                        {"\n"}
+                        {Object.entries(item.record).map(([k, v], fieldIdx, arr) => (
+                          <React.Fragment key={fieldIdx}>
+                            {"  "}
+                            <span className="text-emerald-400">"{k}"</span>
+                            <span className="text-slate-500">: </span>
+                            {typeof v === 'number' ? (
+                              <span className="text-amber-400">{v}</span>
+                            ) : typeof v === 'boolean' ? (
+                              <span className="text-purple-400">{String(v)}</span>
+                            ) : (
+                              <span className="text-sky-300">"{String(v)}"</span>
+                            )}
+                            {fieldIdx < arr.length - 1 ? <span className="text-slate-500">,</span> : null}
+                            {"\n"}
+                          </React.Fragment>
+                        ))}
+                        <span className="text-slate-500">{"}"}</span>
+                      </pre>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-[500px] overflow-y-auto pr-1">
+                {displayedEvidenceRecords.map((item, rIdx) => (
+                  <div key={rIdx} className="bg-secondary/40 border border-border rounded-xl p-3.5 space-y-2.5">
+                    <div className="flex items-center justify-between border-b border-border/80 pb-2">
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono text-primary font-bold text-xs">
+                          #{String(item.idx).padStart(2, '0')}
+                        </span>
+                        <span className="text-xs font-bold text-foreground">{item.file}</span>
+                      </div>
+                      <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-primary/10 text-primary border border-primary/20">
+                        {item.system}
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2 text-xs">
+                      {Object.entries(item.record).map(([k, v], fIdx) => (
+                        <div key={fIdx} className="bg-card rounded-lg p-2 border border-border/60">
+                          <span className="text-muted-foreground block text-[10px] font-mono capitalize">
+                            {k.replace(/_/g, ' ')}
+                          </span>
+                          <span className="text-foreground font-mono text-[11px] truncate block" title={String(v)}>
+                            {String(v)}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Section 65B Legal Declaration Box */}
@@ -1826,7 +2286,7 @@ export default function CaseDossierExporter() {
               </span>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-xs">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 text-xs">
               <div className="space-y-3 font-mono">
                 <div>
                   <span className="text-muted-foreground block text-[10px] uppercase font-bold">Report Self-Digest (SHA-256)</span>
@@ -1835,6 +2295,10 @@ export default function CaseDossierExporter() {
                 <div>
                   <span className="text-muted-foreground block text-[10px] uppercase font-bold">Digital Verification Signature (RSA-2048)</span>
                   <span className="text-primary font-bold text-[11px] break-all">{sec7.final_verification_seal.digital_verification_signature}</span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground block text-[10px] uppercase font-bold">Cryptographic Verification Token</span>
+                  <span className="text-emerald-600 dark:text-emerald-400 font-bold text-[11px]">{dossierData?.verification_metadata?.verification_token || sec7.final_verification_seal.verification_token || 'VER-SIGNED'}</span>
                 </div>
                 <p className="text-muted-foreground text-[11px] font-sans italic">
                   {sec7.final_verification_seal.attestation_statement}
@@ -1852,6 +2316,31 @@ export default function CaseDossierExporter() {
                 <div className="pt-2 text-[10px] text-rose-600 dark:text-rose-400 font-bold uppercase">
                   {sec7.final_verification_seal.legal_warning}
                 </div>
+              </div>
+
+              <div className="space-y-3 p-4 bg-card rounded-xl border border-border flex flex-col items-center justify-between text-center">
+                <div className="text-[10px] uppercase font-bold text-muted-foreground">Statutory Verification Seal</div>
+                <div className="bg-white p-2 rounded-xl border border-border shadow-sm">
+                  <img
+                    src={apiClient.getCaseQrUrl(targetCaseId, networkBaseUrl)}
+                    alt="Judicial Verification Seal QR"
+                    className="w-24 h-24 object-contain"
+                  />
+                </div>
+                <div className="space-y-0.5">
+                  <div className="text-[11px] font-bold text-foreground">Scan to Authenticate Record</div>
+                  <div className="text-[10px] text-muted-foreground font-mono">
+                    Token: {dossierData?.verification_metadata?.verification_token || 'VER-SIGNED'}
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleOpenVerificationPortal}
+                  className="w-full py-1.5 px-2.5 rounded-lg bg-secondary hover:bg-secondary/80 text-foreground text-[11px] font-bold flex items-center justify-center gap-1 border border-border cursor-pointer transition-all"
+                >
+                  <ExternalLink className="w-3 h-3" />
+                  <span>Verify Record Online</span>
+                </button>
               </div>
             </div>
           </div>

@@ -1865,6 +1865,7 @@ export const apiClient = {
     investigatorId?: string;
     agencyName?: string;
     classification?: string;
+    verificationBaseUrl?: string;
   }): Promise<CourtDossierData> {
     const searchParams = new URLSearchParams();
     if (params?.caseId) searchParams.append('case_id', params.caseId);
@@ -1872,6 +1873,7 @@ export const apiClient = {
     if (params?.investigatorId) searchParams.append('investigator_id', params.investigatorId);
     if (params?.agencyName) searchParams.append('agency_name', params.agencyName);
     if (params?.classification) searchParams.append('classification', params.classification);
+    if (params?.verificationBaseUrl) searchParams.append('verification_base_url', params.verificationBaseUrl);
     const res = await authFetch(`${API_BASE}/api/reports/court-dossier-data?${searchParams.toString()}`);
     return handleResponse<CourtDossierData>(res);
   },
@@ -1883,6 +1885,7 @@ export const apiClient = {
     investigatorId?: string;
     agencyName?: string;
     classification?: string;
+    verificationBaseUrl?: string;
   } | string, titleArg?: string): Promise<Blob> {
     const searchParams = new URLSearchParams();
     if (typeof params === 'string') {
@@ -1895,17 +1898,18 @@ export const apiClient = {
       if (params.investigatorId) searchParams.append('investigator_id', params.investigatorId);
       if (params.agencyName) searchParams.append('agency_name', params.agencyName);
       if (params.classification) searchParams.append('classification', params.classification);
+      if (params.verificationBaseUrl) searchParams.append('verification_base_url', params.verificationBaseUrl);
     }
     const res = await authFetch(`${API_BASE}/api/reports/pdf?${searchParams.toString()}`);
     if (!res.ok) throw new Error(`PDF Export Failed (${res.status}): ${res.statusText}`);
     return res.blob();
   },
 
-  async downloadSection65BCertificatePdf(params?: { caseId?: string; officerName?: string } | string, officerNameArg?: string): Promise<Blob> {
+  async downloadSection65BCertificatePdf(params?: { caseId?: string; officerName?: string; verificationBaseUrl?: string } | string, officerNameArg?: string): Promise<Blob> {
     return this.downloadSection65bPdf(params, officerNameArg);
   },
 
-  async downloadSection65bPdf(params?: { caseId?: string; officerName?: string } | string, officerNameArg?: string): Promise<Blob> {
+  async downloadSection65bPdf(params?: { caseId?: string; officerName?: string; verificationBaseUrl?: string } | string, officerNameArg?: string): Promise<Blob> {
     const searchParams = new URLSearchParams();
     if (typeof params === 'string') {
       searchParams.append('case_id', params);
@@ -1913,6 +1917,7 @@ export const apiClient = {
     } else if (params) {
       if (params.caseId) searchParams.append('case_id', params.caseId);
       if (params.officerName) searchParams.append('officer_name', params.officerName);
+      if (params.verificationBaseUrl) searchParams.append('verification_base_url', params.verificationBaseUrl);
     }
     const res = await authFetch(`${API_BASE}/api/reports/section-65b?${searchParams.toString()}`);
     if (!res.ok) throw new Error(`Section 65B Export Failed (${res.status}): ${res.statusText}`);
@@ -1924,6 +1929,21 @@ export const apiClient = {
     if (caseId) params.append('case_id', caseId);
     const res = await authFetch(`${API_BASE}/api/reports/verify-custody?${params.toString()}`);
     return handleResponse<EvidenceCustodyResponse>(res);
+  },
+
+  async verifyCase(caseId: string, token?: string): Promise<CaseVerificationResponse> {
+    const params = new URLSearchParams();
+    params.append('case_id', caseId);
+    if (token) params.append('token', token);
+    const res = await authFetch(`${API_BASE}/api/reports/verify-case?${params.toString()}`);
+    return handleResponse<CaseVerificationResponse>(res);
+  },
+
+  getCaseQrUrl(caseId: string, verificationBaseUrl?: string): string {
+    const params = new URLSearchParams();
+    params.append('case_id', caseId);
+    if (verificationBaseUrl) params.append('verification_base_url', verificationBaseUrl);
+    return `${API_BASE}/api/reports/qr?${params.toString()}`;
   }
 };
 
@@ -2399,17 +2419,24 @@ export interface CourtCaseMetadata {
 }
 
 export interface IngestedEvidenceItem {
+  evidence_id?: string;
   source_file_name: string;
   original_source_system: string;
   records_ingested: string;
   ingestion_timestamp: string;
   primary_sha256_hash: string;
+  storage_path?: string;
   system_operator_id: string;
+  records?: Record<string, any>[];
+  raw_records_count?: number;
 }
 
 export interface Section1Custody {
   case_metadata: CourtCaseMetadata;
   evidence_cryptographic_inventory: IngestedEvidenceItem[];
+  raw_evidence_files?: any[];
+  all_evidence_records?: any[];
+  total_raw_records?: number;
   legal_declaration_statute: string;
   legal_declaration_text: string;
 }
@@ -2633,6 +2660,8 @@ export interface ImmutableAuditRecord {
 export interface FinalVerificationSeal {
   generated_pdf_sha256_placeholder: string;
   digital_verification_signature: string;
+  verification_token?: string;
+  verification_url?: string;
   attestation_statement: string;
   certifying_officer: string;
   certifying_officer_id: string;
@@ -2647,10 +2676,21 @@ export interface Section7AuditAnnexure {
   final_verification_seal: FinalVerificationSeal;
 }
 
+export interface DossierVerificationMetadata {
+  verification_token: string;
+  verification_url: string;
+  qr_code_url: string;
+  digital_signature: string;
+  statutory_compliance: string;
+  tamper_free: boolean;
+  verified_at: string;
+}
+
 export interface CourtDossierData {
   case_id: string;
   case_reference: string;
   case_title: string;
+  verification_metadata?: DossierVerificationMetadata;
   high_priority_alerts?: HighPriorityAlert[];
   ai_forensic_science?: AiForensicScience;
   section_1_custody: Section1Custody;
@@ -2660,4 +2700,134 @@ export interface CourtDossierData {
   section_5_gds_topology: Section5GdsTopology;
   section_6_chronological_log: Section6ChronologicalLog;
   section_7_audit_annexure: Section7AuditAnnexure;
+  raw_evidence_files?: any[];
+  all_evidence_records?: any[];
+  total_raw_records?: number;
 }
+
+export interface PlatformCapabilityRecord {
+  stage: string;
+  engine: string;
+  result: string;
+}
+
+export interface VerificationEvidenceManifestItem {
+  filename: string;
+  sha256: string;
+  file_size?: number;
+  received_at?: string | null;
+  status: string;
+}
+
+export interface VerificationSuspectSummaryItem {
+  canonical_id: string;
+  primary_name: string;
+  aliases: string[];
+  risk_score: number;
+  known_phones: string[];
+  known_accounts: string[];
+}
+
+export interface VerificationCriticalAnomalyItem {
+  finding_id: string;
+  title: string;
+  domain: string;
+  severity: string;
+  score: number;
+  summary: string;
+}
+
+export interface VerificationRawEvidenceFile {
+  evidence_id: string;
+  filename: string;
+  source_type: string;
+  mime_type: string;
+  file_size: number;
+  sha256: string;
+  storage_path: string;
+  record_count: number;
+  received_at?: string;
+  received_by?: string;
+  status: string;
+  records: Record<string, any>[];
+}
+
+export interface VerificationRecordItem {
+  record_index: number;
+  evidence_id: string;
+  source_file: string;
+  source_type: string;
+  record_data: Record<string, any>;
+}
+
+export interface VerificationGoldenProfileDetail {
+  canonical_id: string;
+  primary_name: string;
+  known_aliases: string[];
+  risk_score: number;
+  risk_level: 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW' | string;
+  resolution_method: string;
+  known_phones: string[];
+  known_accounts: string[];
+  associated_emails: string[];
+  national_ids: string[];
+  social_handles: any[];
+  known_addresses: string[];
+  merged_node_ids?: string[];
+  last_updated?: string;
+}
+
+export interface VerificationAnomalyDetail {
+  finding_id: string;
+  title: string;
+  domain: string;
+  severity: 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW' | string;
+  unified_score: number;
+  primary_detector_type: string;
+  what_happened: string;
+  why_unusual: string;
+  why_relevant: string;
+  supporting_observations: string[];
+  evidence_refs: string[];
+  evidence_filenames: string[];
+  primary_entities: string[];
+  created_at?: string;
+}
+
+export interface CaseVerificationResponse {
+  status: 'AUTHENTICATED' | 'TOKEN_MISMATCH' | string;
+  is_valid: boolean;
+  verification_status: 'SEALED_VERIFIED' | 'VERIFICATION_FAILED' | string;
+  case_id: string;
+  case_reference: string;
+  case_title: string;
+  classification: string;
+  case_status: string;
+  agency_name: string;
+  statutory_mandate: string;
+  legal_admissibility: string;
+  digital_signature: string;
+  verification_token: string;
+  token_matched: boolean;
+  evidence_files_count: number;
+  total_records_count?: number;
+  raw_evidence_files?: VerificationRawEvidenceFile[];
+  all_evidence_records?: VerificationRecordItem[];
+  evidence_manifest: VerificationEvidenceManifestItem[];
+  resolved_suspects_count: number;
+  entity_resolutions?: VerificationGoldenProfileDetail[];
+  suspect_summary: VerificationSuspectSummaryItem[];
+  anomalies_count: number;
+  anomalies?: VerificationAnomalyDetail[];
+  critical_anomalies: VerificationCriticalAnomalyItem[];
+  platform_capabilities_executed: PlatformCapabilityRecord[];
+  audit_integrity: {
+    tamper_free?: boolean;
+    audit_chain_valid?: boolean;
+    total_events?: number;
+    [key: string]: any;
+  };
+  tamper_free: boolean;
+  verified_at: string;
+}
+
