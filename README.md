@@ -22,6 +22,8 @@
 </div>
 
 > **OmniTrace** unifies fragmented, heterogeneous digital evidence—telecom CDRs, ISP IPDR sessions, banking transactions, social activity logs, KYC filings, CCTV telemetry, and physical NFC crime scene acquisitions—into a single, high-performance analytical picture. Built on distributed columnar event stores, graph data science, multi-engine anomaly detection, and a structure-aware multi-agent investigation workflow, OmniTrace transforms raw investigation data into courtroom-admissible intelligence without compromising chain of custody.
+>
+> 📄 **System Documentation**: For the complete platform architecture, forensic engineering blueprints, and evaluation reports, see [Dabangg Coder Documentation](./Dabangg%20Coder%20Documentation%20(1).pdf).
 
 ---
 
