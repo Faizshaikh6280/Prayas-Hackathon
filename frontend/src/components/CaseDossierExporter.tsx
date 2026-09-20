@@ -54,7 +54,7 @@ type DossierTab =
   | 'full_dossier';
 
 export default function CaseDossierExporter() {
-  const { activeCase } = useCase();
+  const { activeCase, cases, setActiveCaseId } = useCase();
   const { user } = useAuth();
 
   // Judicial Metadata Parameters
@@ -353,6 +353,20 @@ export default function CaseDossierExporter() {
       }
     }
 
+    // Fallback if inventory had 0 parsed rows but all_evidence_records exists
+    if (list.length === 0 && dossierData?.all_evidence_records && dossierData.all_evidence_records.length > 0) {
+      dossierData.all_evidence_records.forEach((ar: any, idx: number) => {
+        if (selectedEvidenceFile === 'ALL' || ar.source_file === selectedEvidenceFile) {
+          list.push({
+            record: ar.record_data || ar,
+            file: ar.source_file || 'evidence.csv',
+            system: ar.source_type || 'INGESTED_DATA',
+            idx: idx + 1
+          });
+        }
+      });
+    }
+
     if (!evidenceSearchQuery.trim()) {
       return list;
     }
@@ -360,7 +374,236 @@ export default function CaseDossierExporter() {
     return list.filter(item => {
       return JSON.stringify(item.record).toLowerCase().includes(q) || item.file.toLowerCase().includes(q);
     });
-  }, [sec1?.evidence_cryptographic_inventory, selectedEvidenceFile, evidenceSearchQuery]);
+  }, [sec1?.evidence_cryptographic_inventory, dossierData?.all_evidence_records, selectedEvidenceFile, evidenceSearchQuery]);
+
+  const renderCrucialEvidenceRecordsInspector = () => {
+    const inventory = sec1?.evidence_cryptographic_inventory || [];
+    const totalRecordsAcrossFiles = inventory.reduce(
+      (acc, f) => acc + (f.records?.length || f.raw_records_count || 0), 0
+    ) || (dossierData?.all_evidence_records?.length || 0);
+
+    return (
+      <div className="space-y-4">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2 flex-wrap">
+              <Code2 className="w-4 h-4 text-indigo-500 dark:text-indigo-400" />
+              <h3 className="text-xs font-bold uppercase tracking-wider text-foreground">
+                Crucial Ingested Evidence Records (Formatted JSON Inspector)
+              </h3>
+              <span className="text-[10px] font-mono px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold border border-emerald-500/20">
+                LIVE FROM DB / MINIO VAULT
+              </span>
+              <span className="text-[10px] font-mono px-2.5 py-0.5 rounded-full bg-indigo-500/10 text-indigo-400 font-bold border border-indigo-500/20">
+                {totalRecordsAcrossFiles} Live Records
+              </span>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Direct underlying records from PostgreSQL & MinIO vault upon which all Zingg ML entity resolutions and anomalies are grounded.
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                const jsonStr = JSON.stringify(displayedEvidenceRecords.map(d => d.record), null, 2);
+                navigator.clipboard.writeText(jsonStr);
+                setCopiedEvidenceJson(true);
+                setTimeout(() => setCopiedEvidenceJson(false), 2500);
+              }}
+              className="px-3 py-1.5 rounded-lg bg-secondary hover:bg-secondary/80 text-foreground border border-border text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer"
+            >
+              {copiedEvidenceJson ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5 text-muted-foreground" />}
+              <span>{copiedEvidenceJson ? 'JSON Copied!' : 'Copy Records JSON'}</span>
+            </button>
+          </div>
+        </div>
+
+        {/* File Selector Chips */}
+        <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
+          <button
+            type="button"
+            onClick={() => setSelectedEvidenceFile('ALL')}
+            className={cn(
+              "px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors border cursor-pointer",
+              selectedEvidenceFile === 'ALL'
+                ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                : "bg-secondary/50 text-muted-foreground border-border hover:text-foreground hover:bg-secondary"
+            )}
+          >
+            All Sources ({totalRecordsAcrossFiles} records)
+          </button>
+
+          {inventory.map((file, fIdx) => (
+            <button
+              key={fIdx}
+              type="button"
+              onClick={() => setSelectedEvidenceFile(file.source_file_name)}
+              className={cn(
+                "px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors border flex items-center gap-1.5 cursor-pointer",
+                selectedEvidenceFile === file.source_file_name
+                  ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                  : "bg-secondary/50 text-muted-foreground border-border hover:text-foreground hover:bg-secondary"
+              )}
+            >
+              <FileText className="w-3.5 h-3.5 opacity-70" />
+              <span>{file.source_file_name}</span>
+              <span className="text-[10px] font-mono opacity-80">({file.records?.length || file.raw_records_count || 0})</span>
+            </button>
+          ))}
+        </div>
+
+        {/* Search Bar & View Mode Toggle */}
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-1">
+          <div className="relative w-full sm:w-80">
+            <Search className="w-3.5 h-3.5 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2" />
+            <input
+              type="text"
+              value={evidenceSearchQuery}
+              onChange={(e) => setEvidenceSearchQuery(e.target.value)}
+              placeholder="Filter records by phone, account, name, amount, IP..."
+              className="w-full bg-secondary/60 border border-border rounded-xl pl-9 pr-3 py-1.5 text-xs text-foreground placeholder-muted-foreground outline-none focus:border-primary"
+            />
+          </div>
+
+          <div className="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-end">
+            <span className="text-xs text-muted-foreground font-mono">
+              Showing {displayedEvidenceRecords.length} records
+            </span>
+
+            <div className="flex items-center bg-secondary border border-border rounded-lg p-0.5">
+              <button
+                type="button"
+                onClick={() => setEvidenceViewMode('json')}
+                className={cn(
+                  "px-2.5 py-1 rounded text-xs font-semibold transition-colors flex items-center gap-1 cursor-pointer",
+                  evidenceViewMode === 'json' ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                <Code2 className="w-3.5 h-3.5" />
+                <span>JSON View</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setEvidenceViewMode('cards')}
+                className={cn(
+                  "px-2.5 py-1 rounded text-xs font-semibold transition-colors flex items-center gap-1 cursor-pointer",
+                  evidenceViewMode === 'cards' ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                <Layers className="w-3.5 h-3.5" />
+                <span>Card View</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Displayed Records (JSON or Card) */}
+        {displayedEvidenceRecords.length === 0 ? (
+          <div className="p-8 border border-border rounded-xl text-center text-muted-foreground text-xs bg-secondary/20">
+            No evidence records found matching criteria.
+          </div>
+        ) : evidenceViewMode === 'json' ? (
+          <div className="space-y-3 max-h-[500px] overflow-y-auto pr-1">
+            {displayedEvidenceRecords.map((item, rIdx) => (
+              <div key={rIdx} className="bg-slate-950 border border-slate-800 rounded-xl overflow-hidden shadow-sm">
+                <div className="bg-slate-900/90 px-4 py-1.5 border-b border-slate-800 flex items-center justify-between text-xs">
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono text-indigo-400 font-bold text-[11px]">
+                      RECORD #{String(item.idx).padStart(2, '0')}
+                    </span>
+                    <span className="text-slate-600">•</span>
+                    <span className="text-slate-300 font-medium">{item.file}</span>
+                    <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
+                      {item.system}
+                    </span>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      navigator.clipboard.writeText(JSON.stringify(item.record, null, 2));
+                      setCopiedRecordIdx(rIdx);
+                      setTimeout(() => setCopiedRecordIdx(null), 2500);
+                    }}
+                    className="text-slate-400 hover:text-white flex items-center gap-1 text-[11px] transition-colors cursor-pointer"
+                  >
+                    {copiedRecordIdx === rIdx ? (
+                      <>
+                        <Check className="w-3 h-3 text-emerald-400" />
+                        <span className="text-emerald-400 font-semibold">Copied!</span>
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="w-3 h-3" />
+                        <span>Copy Record JSON</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+
+                <div className="p-3.5 font-mono text-xs overflow-x-auto text-slate-200">
+                  <pre className="text-[11.5px] leading-relaxed">
+                    <span className="text-slate-500">{"{"}</span>
+                    {"\n"}
+                    {Object.entries(item.record).map(([k, v], fieldIdx, arr) => (
+                      <React.Fragment key={fieldIdx}>
+                        {"  "}
+                        <span className="text-emerald-400">"{k}"</span>
+                        <span className="text-slate-500">: </span>
+                        {typeof v === 'number' ? (
+                          <span className="text-amber-400">{v}</span>
+                        ) : typeof v === 'boolean' ? (
+                          <span className="text-purple-400">{String(v)}</span>
+                        ) : (
+                          <span className="text-sky-300">"{String(v)}"</span>
+                        )}
+                        {fieldIdx < arr.length - 1 ? <span className="text-slate-500">,</span> : null}
+                        {"\n"}
+                      </React.Fragment>
+                    ))}
+                    <span className="text-slate-500">{"}"}</span>
+                  </pre>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-[500px] overflow-y-auto pr-1">
+            {displayedEvidenceRecords.map((item, rIdx) => (
+              <div key={rIdx} className="bg-secondary/40 border border-border rounded-xl p-3.5 space-y-2.5">
+                <div className="flex items-center justify-between border-b border-border/80 pb-2">
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono text-primary font-bold text-xs">
+                      #{String(item.idx).padStart(2, '0')}
+                    </span>
+                    <span className="text-xs font-bold text-foreground">{item.file}</span>
+                  </div>
+                  <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-primary/10 text-primary border border-primary/20">
+                    {item.system}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  {Object.entries(item.record).map(([k, v], fIdx) => (
+                    <div key={fIdx} className="bg-card rounded-lg p-2 border border-border/60">
+                      <span className="text-muted-foreground block text-[10px] font-mono capitalize">
+                        {k.replace(/_/g, ' ')}
+                      </span>
+                      <span className="text-foreground font-mono text-[11px] truncate block" title={String(v)}>
+                        {String(v)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  };
 
   // Filtered Resolved Entities
   const allResolvedEntities = useMemo(() => {
@@ -435,8 +678,26 @@ export default function CaseDossierExporter() {
               </div>
             </div>
 
-            {/* Header Action Buttons */}
-            <div className="flex flex-wrap items-center gap-2">
+            {/* Header Action Buttons & Case Switcher */}
+            <div className="flex flex-wrap items-center gap-2.5">
+              {cases && cases.length > 0 && (
+                <div className="flex items-center gap-1.5 bg-white/10 px-2.5 py-1 rounded-xl border border-white/20">
+                  <Database className="w-3.5 h-3.5 text-indigo-300" />
+                  <span className="text-[11px] text-indigo-200 font-semibold hidden sm:inline">Case:</span>
+                  <select
+                    value={activeCase?.case_id || targetCaseId}
+                    onChange={(e) => setActiveCaseId(e.target.value)}
+                    className="bg-slate-900/90 text-white text-xs font-bold rounded-lg px-2 py-1 border border-indigo-400/40 outline-none cursor-pointer"
+                  >
+                    {cases.map((c) => (
+                      <option key={c.case_id} value={c.case_id} className="bg-slate-900 text-white">
+                        {c.title} ({c.case_reference || c.case_id})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
               <button
                 type="button"
                 onClick={handleRefresh}
@@ -661,7 +922,8 @@ export default function CaseDossierExporter() {
       {/* TAB CONTENT 0: OVERVIEW & INVESTIGATION SETTINGS                         */}
       {/* ========================================================================= */}
       {activeTab === 'overview' && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           
           {/* Module 1: Judicial Dossier Configuration */}
           <div className="bg-card border border-border rounded-2xl p-6 shadow-sm flex flex-col justify-between space-y-5">
@@ -835,6 +1097,12 @@ export default function CaseDossierExporter() {
             </button>
           </div>
         </div>
+
+        {/* Module 3: Crucial Ingested Evidence Records Live on Overview */}
+        <div className="bg-card border border-border rounded-2xl p-6 shadow-sm">
+          {renderCrucialEvidenceRecordsInspector()}
+        </div>
+      </div>
       )}
 
       {/* ========================================================================= */}
@@ -971,221 +1239,8 @@ export default function CaseDossierExporter() {
           {/* ================================================================= */}
           {/* CRUCIAL EVIDENCE & RAW RECORDS IN JSON FORMAT (LIVE FROM DB)      */}
           {/* ================================================================= */}
-          <div className="space-y-4 pt-4 border-t border-border">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-              <div className="space-y-1">
-                <div className="flex items-center gap-2">
-                  <Code2 className="w-4 h-4 text-indigo-500 dark:text-indigo-400" />
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-foreground">
-                    Crucial Evidence Records (Formatted JSON Inspector)
-                  </h3>
-                  <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold border border-emerald-500/20">
-                    LIVE FROM DB / VAULT
-                  </span>
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Inspect the exact underlying forensic records ingested into the platform upon which all entity resolutions and anomalies are mathematically grounded.
-                </p>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    const jsonStr = JSON.stringify(displayedEvidenceRecords.map(d => d.record), null, 2);
-                    navigator.clipboard.writeText(jsonStr);
-                    setCopiedEvidenceJson(true);
-                    setTimeout(() => setCopiedEvidenceJson(false), 2500);
-                  }}
-                  className="px-3 py-1.5 rounded-lg bg-secondary hover:bg-secondary/80 text-foreground border border-border text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer"
-                >
-                  {copiedEvidenceJson ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5 text-muted-foreground" />}
-                  <span>{copiedEvidenceJson ? 'JSON Copied!' : 'Copy Records JSON'}</span>
-                </button>
-              </div>
-            </div>
-
-            {/* File Selector Chips */}
-            <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
-              <button
-                type="button"
-                onClick={() => setSelectedEvidenceFile('ALL')}
-                className={cn(
-                  "px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors border cursor-pointer",
-                  selectedEvidenceFile === 'ALL'
-                    ? "bg-primary text-primary-foreground border-primary shadow-sm"
-                    : "bg-secondary/50 text-muted-foreground border-border hover:text-foreground hover:bg-secondary"
-                )}
-              >
-                All Sources ({(sec1?.evidence_cryptographic_inventory || []).reduce((acc, f) => acc + (f.records?.length || 0), 0)} records)
-              </button>
-
-              {(sec1?.evidence_cryptographic_inventory || []).map((file, fIdx) => (
-                <button
-                  key={fIdx}
-                  type="button"
-                  onClick={() => setSelectedEvidenceFile(file.source_file_name)}
-                  className={cn(
-                    "px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors border flex items-center gap-1.5 cursor-pointer",
-                    selectedEvidenceFile === file.source_file_name
-                      ? "bg-primary text-primary-foreground border-primary shadow-sm"
-                      : "bg-secondary/50 text-muted-foreground border-border hover:text-foreground hover:bg-secondary"
-                  )}
-                >
-                  <FileText className="w-3.5 h-3.5 opacity-70" />
-                  <span>{file.source_file_name}</span>
-                  <span className="text-[10px] font-mono opacity-80">({file.records?.length || file.raw_records_count || 0})</span>
-                </button>
-              ))}
-            </div>
-
-            {/* Search Bar & View Mode Toggle */}
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-1">
-              <div className="relative w-full sm:w-80">
-                <Search className="w-3.5 h-3.5 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2" />
-                <input
-                  type="text"
-                  value={evidenceSearchQuery}
-                  onChange={(e) => setEvidenceSearchQuery(e.target.value)}
-                  placeholder="Filter records by phone, account, name, amount..."
-                  className="w-full bg-secondary/60 border border-border rounded-xl pl-9 pr-3 py-1.5 text-xs text-foreground placeholder-muted-foreground outline-none focus:border-primary"
-                />
-              </div>
-
-              <div className="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-end">
-                <span className="text-xs text-muted-foreground font-mono">
-                  Showing {displayedEvidenceRecords.length} records
-                </span>
-
-                <div className="flex items-center bg-secondary border border-border rounded-lg p-0.5">
-                  <button
-                    type="button"
-                    onClick={() => setEvidenceViewMode('json')}
-                    className={cn(
-                      "px-2.5 py-1 rounded text-xs font-semibold transition-colors flex items-center gap-1 cursor-pointer",
-                      evidenceViewMode === 'json' ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
-                    )}
-                  >
-                    <Code2 className="w-3.5 h-3.5" />
-                    <span>JSON View</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setEvidenceViewMode('cards')}
-                    className={cn(
-                      "px-2.5 py-1 rounded text-xs font-semibold transition-colors flex items-center gap-1 cursor-pointer",
-                      evidenceViewMode === 'cards' ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
-                    )}
-                  >
-                    <Layers className="w-3.5 h-3.5" />
-                    <span>Card View</span>
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {/* Displayed Records (JSON or Card) */}
-            {displayedEvidenceRecords.length === 0 ? (
-              <div className="p-8 border border-border rounded-xl text-center text-muted-foreground text-xs bg-secondary/20">
-                No evidence records found matching criteria.
-              </div>
-            ) : evidenceViewMode === 'json' ? (
-              <div className="space-y-3 max-h-[500px] overflow-y-auto pr-1">
-                {displayedEvidenceRecords.map((item, rIdx) => (
-                  <div key={rIdx} className="bg-slate-950 border border-slate-800 rounded-xl overflow-hidden shadow-sm">
-                    <div className="bg-slate-900/90 px-4 py-1.5 border-b border-slate-800 flex items-center justify-between text-xs">
-                      <div className="flex items-center gap-2">
-                        <span className="font-mono text-indigo-400 font-bold text-[11px]">
-                          RECORD #{String(item.idx).padStart(2, '0')}
-                        </span>
-                        <span className="text-slate-600">•</span>
-                        <span className="text-slate-300 font-medium">{item.file}</span>
-                        <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
-                          {item.system}
-                        </span>
-                      </div>
-
-                      <button
-                        type="button"
-                        onClick={() => {
-                          navigator.clipboard.writeText(JSON.stringify(item.record, null, 2));
-                          setCopiedRecordIdx(rIdx);
-                          setTimeout(() => setCopiedRecordIdx(null), 2500);
-                        }}
-                        className="text-slate-400 hover:text-white flex items-center gap-1 text-[11px] transition-colors cursor-pointer"
-                      >
-                        {copiedRecordIdx === rIdx ? (
-                          <>
-                            <Check className="w-3 h-3 text-emerald-400" />
-                            <span className="text-emerald-400 font-semibold">Copied!</span>
-                          </>
-                        ) : (
-                          <>
-                            <Copy className="w-3 h-3" />
-                            <span>Copy Record JSON</span>
-                          </>
-                        )}
-                      </button>
-                    </div>
-
-                    <div className="p-3.5 font-mono text-xs overflow-x-auto text-slate-200">
-                      <pre className="text-[11.5px] leading-relaxed">
-                        <span className="text-slate-500">{"{"}</span>
-                        {"\n"}
-                        {Object.entries(item.record).map(([k, v], fieldIdx, arr) => (
-                          <React.Fragment key={fieldIdx}>
-                            {"  "}
-                            <span className="text-emerald-400">"{k}"</span>
-                            <span className="text-slate-500">: </span>
-                            {typeof v === 'number' ? (
-                              <span className="text-amber-400">{v}</span>
-                            ) : typeof v === 'boolean' ? (
-                              <span className="text-purple-400">{String(v)}</span>
-                            ) : (
-                              <span className="text-sky-300">"{String(v)}"</span>
-                            )}
-                            {fieldIdx < arr.length - 1 ? <span className="text-slate-500">,</span> : null}
-                            {"\n"}
-                          </React.Fragment>
-                        ))}
-                        <span className="text-slate-500">{"}"}</span>
-                      </pre>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-[500px] overflow-y-auto pr-1">
-                {displayedEvidenceRecords.map((item, rIdx) => (
-                  <div key={rIdx} className="bg-secondary/40 border border-border rounded-xl p-3.5 space-y-2.5">
-                    <div className="flex items-center justify-between border-b border-border/80 pb-2">
-                      <div className="flex items-center gap-2">
-                        <span className="font-mono text-primary font-bold text-xs">
-                          #{String(item.idx).padStart(2, '0')}
-                        </span>
-                        <span className="text-xs font-bold text-foreground">{item.file}</span>
-                      </div>
-                      <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-primary/10 text-primary border border-primary/20">
-                        {item.system}
-                      </span>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-2 text-xs">
-                      {Object.entries(item.record).map(([k, v], fIdx) => (
-                        <div key={fIdx} className="bg-card rounded-lg p-2 border border-border/60">
-                          <span className="text-muted-foreground block text-[10px] font-mono capitalize">
-                            {k.replace(/_/g, ' ')}
-                          </span>
-                          <span className="text-foreground font-mono text-[11px] truncate block" title={String(v)}>
-                            {String(v)}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
+          <div className="pt-4 border-t border-border">
+            {renderCrucialEvidenceRecordsInspector()}
           </div>
 
           {/* Section 65B Legal Declaration Box */}
